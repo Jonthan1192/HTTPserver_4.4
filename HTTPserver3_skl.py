@@ -1,5 +1,3 @@
-# https://github.com/Jonthan1192/HTTPserver_4.4.git
-
 import os
 import socket
 import threading
@@ -7,7 +5,9 @@ import threading
 exts_txt = ['.js', '.txt', '.css']
 exts_bin = ['.html', '.jpg', '.gif', '.ico']
 
-moved_302 = {'A/dog.jpg': 'B/dog.jpg', 'B/dog.jpg': 'B/dog2.jpg'}
+moved_302 = {'duck.jpg': r'webroot\imgs\duck.jpg'}
+
+local_path = r'E:\Ex4.4\HTTPserver_Ex4.4\\'
 
 exit_all = False
 
@@ -72,9 +72,10 @@ def get_type_header(file_path):
 
 
 def get_file_data(requested_file):
+    global local_path
     if not os.path.exists(requested_file):
         return b""
-    with open(requested_file, "rb") as f:
+    with open(local_path + requested_file, "rb") as f:
         file_data = f.read()
     return file_data
 
@@ -90,7 +91,8 @@ def handle_request(request_header, body):
         reply_header += 'Content-Type: text/plain\r\n'
         file_requested = False
     elif file_path == r"duck.jpg":
-        reply_header, reply_body = "HTTP/1.1 302 Moved Temporarily\r\n", b''
+        new_path = moved_302[file_path]
+        reply_header, reply_body = f"HTTP/1.1 302 Moved Temporarily\r\nLocation: {new_path}\r\n", b''
         file_requested = False
     elif file_path == r"systemFiles\NotFound.html" or file_path == r"systemFiles\AccessDenied.html":
         reply_header, reply_body = "HTTP/1.1 403 Forbidden\r\n", b''
