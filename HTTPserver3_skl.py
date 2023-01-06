@@ -5,7 +5,7 @@ import threading
 exts_txt = ['.js', '.txt', '.css']
 exts_bin = ['.html', '.jpg', '.gif', '.ico']
 
-moved_302 = {'duck.jpg': r'webroot\imgs\duck.jpg'}
+moved_302 = {r'duck.jpg': r'webroot\imgs\duck.jpg', r'aaa.jpg': r'webroot\imgs\aaa.jpg'}
 
 local_path = r'E:\Ex4.4\HTTPserver_Ex4.4\\'
 
@@ -81,37 +81,50 @@ def get_file_data(requested_file):
 
 
 def handle_request(request_header, body):
+    global moved_302
     header_parts = request_header.split(" ")
-    file_path = header_parts[1][1:]
+    url = header_parts[1]
+    parameters = []
+    if url.find('?') != -1:
+        file_path = url[1:url.find('?')]
+        parameters = url[url.find('?') + 1:].split('?')
+    else:
+        file_path = url[1:]
     file_path = file_path.replace("/", "\\")
-    file_requested = True
     reply_header = "HTTP/1.1 200 OK\r\n"
-    if file_path[:14] == "calculate-next":
-        reply_body = b'4'
+    if file_path == "calculate-next" or file_path == r"webroot\calculate-next":
+        num = parameters[0][4:]
+        if not num.isnumeric():
+            reply_header, reply_body = "HTTP/1.1 404 Not Found\r\n", b''
+            return reply_header, reply_body
+        num = int(num) + 1
+        num = str(num).encode()
+        reply_body = num
         reply_header += 'Content-Type: text/plain\r\n'
-        file_requested = False
-    elif file_path == r"duck.jpg":
+        return reply_header, reply_body
+    elif file_path == "":
+        file_path = r"webroot\\index.html"
+    elif file_path in moved_302.keys():
         new_path = moved_302[file_path]
         reply_header, reply_body = f"HTTP/1.1 302 Moved Temporarily\r\nLocation: {new_path}\r\n", b''
-        file_requested = False
+        return reply_header, reply_body
     elif file_path == r"systemFiles\NotFound.html" or file_path == r"systemFiles\AccessDenied.html":
         reply_header, reply_body = "HTTP/1.1 403 Forbidden\r\n", b''
-        file_requested = False
-    else:
-        reply_body = get_file_data(file_path)
-        if reply_body == b"":
-            reply_header, reply_body = "HTTP/1.1 404 Not Found\r\n", b''
-            file_requested = False
-    if file_requested:
-        file_type = get_type_header(file_path)
-        if file_type == "txt" or file_type == "html":
-            reply_header += 'Content-Type: text/html; charset=UTF-8\r\n'
-        elif file_type == "jpg" or file_type == "jpeg":
-            reply_header += 'Content-Type: image/jpeg\r\n'
-        elif file_type == "js":
-            reply_header += 'Content-Type: text/javascript; charset=UTF-8\r\n'
-        elif file_type == "css":
-            reply_header += 'Content-Type: text/css\r\n'
+        return reply_header, reply_body
+
+    reply_body = get_file_data(file_path)
+    if reply_body == b"":
+        reply_header = "HTTP/1.1 404 Not Found\r\n"
+        return reply_header, reply_body
+    file_type = get_type_header(file_path)
+    if file_type == "txt" or file_type == "html":
+        reply_header += 'Content-Type: text/html; charset=UTF-8\r\n'
+    elif file_type == "jpg" or file_type == "jpeg" or file_type == "ico":
+        reply_header += 'Content-Type: image/jpeg\r\n'
+    elif file_type == "js":
+        reply_header += 'Content-Type: text/javascript; charset=UTF-8\r\n'
+    elif file_type == "css":
+        reply_header += 'Content-Type: text/css\r\n'
     return reply_header, reply_body
 
 
